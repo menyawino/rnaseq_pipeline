@@ -6,10 +6,10 @@
     - **samples (needs to be added manually)**
         
         
-    - analysis
+    - **analysis (created and managed by the workflow)**
         
         
-    - results
+    - **results (created and managed by the workflow)**
         
         
     - **workflow (needs to be added manually)**
