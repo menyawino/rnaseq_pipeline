@@ -1,21 +1,23 @@
-'''A function to get the sample data needed for the pipeline.'''
+#!/usr/bin/env python
 
-# Reading Metadata Columns:
+"""
+A script to get the sample data needed for the pipeline.
 
-# The script reads all columns from the CSV except for the sample_names column, which is used for matching.
-# Storing Metadata:
+Usage:
+    ./get_sample_data.py --csv <path_to_samples.csv> --dir <path_to_fastq_dir>
 
-# The script extracts metadata for each sample and appends it to the list of rows that will be written to the output file.
-# Writing to Output CSV:
-
-# The script writes the sample name, sample number, lane, read type, file path, and any additional metadata to the output CSV file.
+Description:
+    The script reads the sample metadata from the provided CSV file, matches it with the corresponding FASTQ files,
+    and outputs the results in a new CSV file named `sample_data.csv`.
+"""
 
 import pandas as pd
 import glob
 import os
 import re
+import argparse
 
-def get_sample_data(csv_file):
+def get_sample_data(csv_file, fastq_dir):
     """
     A function to get the sample data needed for the pipeline.
     """
@@ -23,9 +25,6 @@ def get_sample_data(csv_file):
 
     # Assuming the sample names are in a column named 'sample'
     sample_names = df['sample'].astype(str).tolist()
-
-    # Directory where your fastq files are located
-    fastq_dir = os.getcwd() + '/samples/'
 
     # Dictionary to hold the fastq file paths for each sample
     sample_fastq_files = {}
@@ -65,8 +64,6 @@ def get_sample_data(csv_file):
         for missing_file in missing_files:
             print(missing_file)
         raise FileNotFoundError("Some files are missing. Please check the above messages.")
-    # else:
-        # print("All files are present.")
 
     # Merge the metadata with the fastq file information
     metadata_columns = df.columns.tolist()
@@ -81,6 +78,8 @@ def get_sample_data(csv_file):
         for sample_number, lane, read, file in sample_fastq_files[sample]:
             merged_sample = "{}_S{}".format(sample, sample_number)
             output_rows.append([merged_sample, lane, read, file] + metadata)
+            print(f"{sample},{lane},{read},{file}")
+
 
     # Save the results to a CSV file
     output_file = 'sample_data.csv'
@@ -91,7 +90,28 @@ def get_sample_data(csv_file):
         for row in output_rows:
             f.write(','.join(map(str, row)) + '\n')
     
-    # print("Results have been saved to {}".format(output_file))
-    
     # Return the CSV file as a dataframe
     return pd.read_csv(output_file)
+
+def main():
+    parser = argparse.ArgumentParser(description="Process sample data from a CSV file.")
+    parser.add_argument('--csv', required=True, help="Path to the samples.csv file.")
+    parser.add_argument('--dir', required=True, help="Path to the samples directory.")
+    
+    args = parser.parse_args()
+
+    csv_file = args.csv
+    fastq_dir = args.dir
+    
+    if not os.path.exists(csv_file):
+        raise FileNotFoundError(f"The file {csv_file} does not exist.")
+    
+    if not os.path.exists(fastq_dir):
+        raise FileNotFoundError(f"The directory {fastq_dir} does not exist.")
+
+    df_output = get_sample_data(csv_file, fastq_dir)
+    
+    print(f"Results have been saved to sample_data.csv.")
+
+if __name__ == "__main__":
+    main()

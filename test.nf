@@ -1,23 +1,24 @@
-nextflow.enable.dsl=2
+#!/usr/bin/env nextflow
 
-params.samplesfile = "samples.csv"
+params.samplesfile = file("samples.csv")
+
+params.sampleData = "sample_data.csv"
 params.configfile = "workflow/config_new_tuxedo.yml"
 
 // Load configuration file
-config = readYaml(file: params.configfile)
+// config = readYaml(file: params.configfile)
 
 workflow {
     main:
-        sample_data = Channel.fromPath(params.samplesfile)
-            .map { get_sample_data(it) }
+        sampleData = prepareSampleData(params.samplesfile)
 
-        sample_mrn = sample_data.unique { it.sample }.collect { it.sample }
-        lane = sample_data.unique { it.lane }.collect { it.lane }
-        read = sample_data.unique { it.read }.collect { it.read }
+        // sample_mrn = sample_data.unique { it.sample }.collect { it.sample }
+        // lane = sample_data.unique { it.lane }.collect { it.lane }
+        // read = sample_data.unique { it.read }.collect { it.read }
 
-        fastqc = raw_fastqc(sample_mrn, lane, read)
-        trimmed = trimming(fastqc)
-        post_trim_qc = posttrim_fastqc(trimmed)
+        // fastqc = raw_fastqc(sample_mrn, lane, read)
+        // trimmed = trimming(fastqc)
+        // post_trim_qc = posttrim_fastqc(trimmed)
         // multiqc = multiqc(fastqc, post_trim_qc)
         // aligned = alignment(trimmed)
         // sorted_bam = sort_bam(aligned)
@@ -37,9 +38,57 @@ workflow {
         //     diffexp = sleuth_analysis(counts)
         // }
 
-    emit:
-        diffexp
+    // emit:
+    //     diffexp
 }
+
+
+// process prepareSampleData {
+//     conda "workflow/rules/envs/pandas.yml"
+
+//     input:
+//     path samplesfile
+
+//     output:
+//     tuple val(sample), val(lane), val(read), path(file)
+
+//     script:
+//     """
+//     python3 ${workflow.projectDir}/workflow/nf/scripts/sample_processing.py --csv $samplesfile  --dir $projectDir/samples/
+//     """
+// }
+
+process prepareSampleData {
+    conda "workflow/rules/envs/pandas.yml"
+
+    input:
+    path samplesfile
+
+    output:
+    tuple val(sample), val(lane), val(read), path(file)
+
+    script:
+    """
+    python3 ${workflow.projectDir}/workflow/nf/scripts/sample_processing.py --csv $samplesfile --dir $projectDir/samples/ > ${workflow.projectDir}/sample_data.csv
+
+    while IFS=, read -r sample lane read file; do
+        echo "$sample,$lane,$read,$file"
+    done < sample_data.csv
+    """
+}
+
+// process get_sample_data {
+//     input:
+//         path samplesfile
+    
+//     output:
+//         tuple val(sample), val(lane), val(read)
+    
+//     script:
+//     """
+//     rnaseq_pipeline/workflow/scripts/sample_processing.py --csv ${samplesfile}
+//     """
+// }
 
 // process raw_fastqc {
 //     input:
@@ -53,41 +102,52 @@ workflow {
 //     """
 // }
 
-process raw_fastqc {
-    input:
-    val(sample_mrn), val(lane), val(read)
-    output:
-    tuple val(sample_mrn), val(lane), val(read), path("analysis/001_QC/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_fastqc.html"), path("analysis/001_QC/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_fastqc.zip")
+// process raw_fastqc {
+//     conda "workflow/rules/envs/001_QC.yml"
+
+//     input:
+//         val(sample_mrn), val(lane), val(read)
     
-    script:
-    """
-    mkdir -p analysis/001_QC/${sample_mrn}
-    fastqc samples/${sample_mrn}_${lane}_${read}_001.fastq.gz -t ${task.cpus} -o analysis/001_QC/${sample_mrn} > logs/001_QC/${sample_mrn}_${lane}_${read}.log 2>&1
-    """
-}
+//     output:
+//         tuple val(sample_mrn), val(lane), val(read), path("analysis/001_QC/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_fastqc.html"), path("analysis/001_QC/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_fastqc.zip")
+    
+//     script:
+//     """
+//     mkdir -p analysis/001_QC/${sample_mrn}
+//     fastqc samples/${sample_mrn}_${lane}_${read}_001.fastq.gz -t ${task.cpus} -o analysis/001_QC/${sample_mrn} > logs/001_QC/${sample_mrn}_${lane}_${read}.log 2>&1
+//     """
+// }
 
-process trimming {
-    input:
-        tuple val(sample_mrn), val(lane), val(read), path fastqc_results
-    output:
-        tuple val(sample_mrn), val(lane), val(read), path("analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_R1_001_trimmed.fastq.gz"), path("analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_R2_001_trimmed.fastq.gz"), path("analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_fastp.html")
-    script:
-    """
-    fastp -i samples/${sample_mrn}_${lane}_R1_001.fastq.gz -I samples/${sample_mrn}_${lane}_R2_001.fastq.gz -o analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_R1_001_trimmed.fastq.gz -O analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_R2_001_trimmed.fastq.gz -h analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_fastp.html --adapter_sequence TACACTCTTTCCCTACACGACGCTCTTCCGATCT --adapter_sequence_r2 GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT > logs/002_trimming/${sample_mrn}_${lane}.log 2>&1
-    """
-}
+// process trimming {
+//     conda "workflow/rules/envs/001_QC.yml"
 
-process posttrim_fastqc {
-    input:
-        tuple val(sample_mrn), val(lane), val(read), path trimmed_results
-    output:
-        tuple val(sample_mrn), val(lane), val(read), path("analysis/003_posttrim_qc/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_trimmed_fastqc.html"), path("analysis/003_posttrim_qc/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_trimmed_fastqc.zip")
-    script:
-    """
-    mkdir -p analysis/003_posttrim_qc/${sample_mrn}
-    fastqc analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_trimmed.fastq.gz -t ${task.cpus} -o analysis/003_posttrim_qc/${sample_mrn} > logs/003_posttrim_qc/${sample_mrn}_${lane}_${read}.log 2>&1
-    """
-}
+//     input:
+//         tuple val(sample_mrn), val(lane), val(read), path fastqc_results
+    
+//     output:
+//         tuple val(sample_mrn), val(lane), val(read), path("analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_R1_001_trimmed.fastq.gz"), path("analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_R2_001_trimmed.fastq.gz"), path("analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_fastp.html")
+    
+//     script:
+//     """
+//     fastp -i samples/${sample_mrn}_${lane}_R1_001.fastq.gz -I samples/${sample_mrn}_${lane}_R2_001.fastq.gz -o analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_R1_001_trimmed.fastq.gz -O analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_R2_001_trimmed.fastq.gz -h analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_fastp.html --adapter_sequence TACACTCTTTCCCTACACGACGCTCTTCCGATCT --adapter_sequence_r2 GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT > logs/002_trimming/${sample_mrn}_${lane}.log 2>&1
+//     """
+// }
+
+// process posttrim_fastqc {
+//     conda "workflow/rules/envs/001_QC.yml"
+
+//     input:
+//         tuple val(sample_mrn), val(lane), val(read), path trimmed_results
+    
+//     output:
+//         tuple val(sample_mrn), val(lane), val(read), path("analysis/003_posttrim_qc/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_trimmed_fastqc.html"), path("analysis/003_posttrim_qc/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_trimmed_fastqc.zip")
+    
+//     script:
+//     """
+//     mkdir -p analysis/003_posttrim_qc/${sample_mrn}
+//     fastqc analysis/002_trimming/${sample_mrn}/${sample_mrn}_${lane}_${read}_001_trimmed.fastq.gz -t ${task.cpus} -o analysis/003_posttrim_qc/${sample_mrn} > logs/003_posttrim_qc/${sample_mrn}_${lane}_${read}.log 2>&1
+//     """
+// }
 
 // process multiqc {
 //     input:

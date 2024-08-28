@@ -1,0 +1,9 @@
+sample,lane,read,file,condition
+48977_S3,L001,R1,../../../../rnaseq_pipeline/samples/48977_S3_L001_R1_001.fastq.gz,h
+48977_S3,L001,R2,../../../../rnaseq_pipeline/samples/48977_S3_L001_R2_001.fastq.gz,h
+23011_S4,L001,R1,../../../../rnaseq_pipeline/samples/23011_S4_L001_R1_001.fastq.gz,h
+23011_S4,L001,R2,../../../../rnaseq_pipeline/samples/23011_S4_L001_R2_001.fastq.gz,h
+Myo96_S2,L001,R1,../../../../rnaseq_pipeline/samples/Myo96_S2_L001_R1_001.fastq.gz,d
+Myo96_S2,L001,R2,../../../../rnaseq_pipeline/samples/Myo96_S2_L001_R2_001.fastq.gz,d
+Myo182_S6,L001,R1,../../../../rnaseq_pipeline/samples/Myo182_S6_L001_R1_001.fastq.gz,d
+Myo182_S6,L001,R2,../../../../rnaseq_pipeline/samples/Myo182_S6_L001_R2_001.fastq.gz,d
