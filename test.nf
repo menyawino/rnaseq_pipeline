@@ -2,8 +2,9 @@
 
 params.samplesfile = file("samples.csv")
 
-params.sampleData = "sample_data.csv"
-params.configfile = "workflow/config_new_tuxedo.yml"
+// Define the path to the sample data file
+def currentDir = System.getProperty('user.dir')
+params.sampleData = "$currentDir/sample_data.csv"
 
 // Load configuration file
 // config = readYaml(file: params.configfile)
@@ -12,11 +13,17 @@ workflow {
     main:
         sampleData = prepareSampleData(params.samplesfile)
 
+        def sample_run_ch = Channel
+        .fromPath(params.sampleData, checkIfExists: true)
+        .splitCsv(header: true)
+        .map { row -> tuple( row.sample, row.lane, row.read, row.file, row.condition ) }
+        // .set { sample_run_ch }
+
         // sample_mrn = sample_data.unique { it.sample }.collect { it.sample }
         // lane = sample_data.unique { it.lane }.collect { it.lane }
         // read = sample_data.unique { it.read }.collect { it.read }
 
-        // fastqc = raw_fastqc(sample_mrn, lane, read)
+        fastqc = raw_fastqc()
         // trimmed = trimming(fastqc)
         // post_trim_qc = posttrim_fastqc(trimmed)
         // multiqc = multiqc(fastqc, post_trim_qc)
@@ -43,64 +50,45 @@ workflow {
 }
 
 
-// process prepareSampleData {
-//     conda "workflow/rules/envs/pandas.yml"
-
-//     input:
-//     path samplesfile
-
-//     output:
-//     tuple val(sample), val(lane), val(read), path(file)
-
-//     script:
-//     """
-//     python3 ${workflow.projectDir}/workflow/nf/scripts/sample_processing.py --csv $samplesfile  --dir $projectDir/samples/
-//     """
-// }
-
 process prepareSampleData {
-    conda "workflow/rules/envs/pandas.yml"
+    tag "Preparing sample data"
+
+    conda "workflow/nf/envs/pandas.yml"
 
     input:
     path samplesfile
 
     output:
-    tuple val(sample), val(lane), val(read), path(file)
+    // path sampleData
 
     script:
     """
-    python3 ${workflow.projectDir}/workflow/nf/scripts/sample_processing.py --csv $samplesfile --dir $projectDir/samples/ > ${workflow.projectDir}/sample_data.csv
-
-    while IFS=, read -r sample lane read file; do
-        echo "$sample,$lane,$read,$file"
-    done < sample_data.csv
+    python3 ${workflow.projectDir}/workflow/nf/scripts/sample_processing.py --csv $samplesfile --dir $projectDir/samples/ 
     """
 }
 
-// process get_sample_data {
-//     input:
-//         path samplesfile
-    
-//     output:
-//         tuple val(sample), val(lane), val(read)
-    
-//     script:
-//     """
-//     rnaseq_pipeline/workflow/scripts/sample_processing.py --csv ${samplesfile}
-//     """
-// }
 
-// process raw_fastqc {
-//     input:
-//         val sample_mrn, val lane, val read
-//     output:
-//         tuple val(sample_mrn), val(lane), val(read), path("analysis/001_QC/{sample_mrn}/{sample_mrn}_{lane}_{read}_001_fastqc.html"), path("analysis/001_QC/{sample_mrn}/{sample_mrn}_{lane}_{read}_001_fastqc.zip")
-//     script:
-//     """
-//     mkdir -p analysis/001_QC/${sample_mrn}
-//     fastqc samples/${sample_mrn}_${lane}_${read}_001.fastq.gz -t ${task.cpus} -o analysis/001_QC/${sample_mrn} > logs/001_QC/${sample_mrn}_${lane}_${read}.log 2>&1
-//     """
-// }
+process raw_fastqc {
+
+    tag "Running FastQC on ${sample_mrn}_${lane}_${read}"
+
+    conda "workflow/rules/envs/001_QC.yml"
+
+    cpus 5
+
+    input:
+        tuple val(sample), val(lane), val(read), path(file), val(condition) from sample_run_ch
+
+    output:
+        path("analysis/001_QC/{sample_mrn}/{sample_mrn}_{lane}_{read}_001_fastqc.html"), 
+        path("analysis/001_QC/{sample_mrn}/{sample_mrn}_{lane}_{read}_001_fastqc.zip")
+    
+    script:
+    """
+    mkdir -p analysis/001_QC/${sample_mrn}
+    fastqc samples/${sample_mrn}_${lane}_${read}_001.fastq.gz -t ${task.cpus} -o analysis/001_QC/${sample_mrn} > logs/001_QC/${sample_mrn}_${lane}_${read}.log 2>&1
+    """
+}
 
 // process raw_fastqc {
 //     conda "workflow/rules/envs/001_QC.yml"

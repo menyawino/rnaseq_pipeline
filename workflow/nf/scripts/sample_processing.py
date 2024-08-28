@@ -78,7 +78,8 @@ def get_sample_data(csv_file, fastq_dir):
         for sample_number, lane, read, file in sample_fastq_files[sample]:
             merged_sample = "{}_S{}".format(sample, sample_number)
             output_rows.append([merged_sample, lane, read, file] + metadata)
-            print(f"{sample},{lane},{read},{file}")
+
+            # print(f"{sample},{lane},{read},{file},{metadata}")
 
 
     # Save the results to a CSV file
@@ -109,9 +110,10 @@ def main():
     if not os.path.exists(fastq_dir):
         raise FileNotFoundError(f"The directory {fastq_dir} does not exist.")
 
-    df_output = get_sample_data(csv_file, fastq_dir)
     
-    print(f"Results have been saved to sample_data.csv.")
+    get_sample_data(csv_file, fastq_dir)
+    
+    # print(f"Results have been saved to sample_data.csv.")
 
 if __name__ == "__main__":
     main()
