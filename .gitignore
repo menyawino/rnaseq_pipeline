@@ -1,18 +1,9 @@
 /.RData
 /.Rhistory
-/.nextflow
-/.nextflow.log
-/.nextflow.log.1
-/.nextflow.log.2
-/.nextflow.log.3
-/.snakemake
-/Snakefile copy
+/.nextflow*
 /__pycache__
-/report.html
-/samples_r_metadata.csv
-/work
-/samples
+/work/*
+/samples/*
 /analysis/*
 /logs/*
 /ref/*
-/benchmarks/*

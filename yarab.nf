@@ -19,7 +19,7 @@ workflow {
         sample_run_ch.view()
 }
 
-
+sd
 process prepareSampleData {
     conda "workflow/nf/envs/pandas.yml"
 
