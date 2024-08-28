@@ -2,9 +2,6 @@
 
 
 def currentDir = System.getProperty('user.dir')
-
-// samples_ch = Channel.fromFilePairs("$currentDir/samples/*_R{1,2}_001.fastq.gz", checkIfExists: true)
-
 params.samples = "${launchDir}/samples/*_R{1,2}_001.fastq.gz"
 
 samples_ch = Channel
@@ -14,17 +11,20 @@ process FASTQC {
 
     tag "running FastQC on ${read.baseName}"
 
-    conda 'workflow/nf/envs/001_QC.yml'
+    conda "${launchDir}/workflow/nf/envs/001_QC.yml"
 
     input:
     path read
 
     output:
-    file 'fastqc_logs'
+    file "fastqc_logs/"
+
+    publishDir "/fastqc"
 
     script:
     """
     mkdir -p fastqc_logs
+    mkdir -p ${launchDir}/fastqc_logs
 
     fastqc -o fastqc_logs -f fastq -q ${read}
     """
